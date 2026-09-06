@@ -14,7 +14,8 @@ class EvaluadorReglasPartner:
     """Evaluador minimo de reglas para esta fase in-process."""
 
     def evaluar(self, evento: SolicitudPartnerRegistrada) -> bool:
-        return bool(evento.referencia_externa.strip())
+        referencia = evento.referencia_externa.strip().upper()
+        return not referencia.startswith("RECHAZAR-")
 
 
 class HandlerReglasPartner:
