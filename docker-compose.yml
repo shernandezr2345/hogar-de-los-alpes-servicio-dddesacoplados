@@ -1,0 +1,12 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: hogar_alpes_solicitudes_partner_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hogar_alpes}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
