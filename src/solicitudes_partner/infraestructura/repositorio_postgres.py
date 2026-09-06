@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 import psycopg
+from psycopg.types.json import Jsonb
 
 from solicitudes_partner.dominio.entidades import SolicitudPartner
+from solicitudes_partner.dominio.eventos import EventoDominio
 from solicitudes_partner.dominio.excepciones import SolicitudDuplicadaError
 from solicitudes_partner.dominio.objetos_valor import (
     EstadoSolicitud,
@@ -16,6 +20,12 @@ from solicitudes_partner.dominio.objetos_valor import (
 from solicitudes_partner.dominio.repositorios import RepositorioSolicitudesPartner
 
 
+def _evento_a_payload(evento: EventoDominio) -> dict:
+    datos = dataclasses.asdict(evento)
+    datos["ocurrido_en"] = evento.ocurrido_en.isoformat()
+    return datos
+
+
 class RepositorioSolicitudesPartnerPostgres(RepositorioSolicitudesPartner):
     """Traduce entre el Aggregate SolicitudPartner y filas de PostgreSQL."""
 
@@ -23,8 +33,13 @@ class RepositorioSolicitudesPartnerPostgres(RepositorioSolicitudesPartner):
         self._conexion = conexion
 
     def guardar(self, solicitud: SolicitudPartner) -> None:
+        # Eventos aun pendientes en el agregado (lectura, no los consume): se
+        # persisten en el outbox en la misma transaccion que el upsert, para
+        # publicacion confiable posterior via RelayOutbox. La app sigue
+        # pudiendo hacer pull_eventos_pendientes() despues para su flujo interno.
+        eventos = solicitud.ver_eventos_pendientes()
         try:
-            with self._conexion.cursor() as cursor:
+            with self._conexion.transaction(), self._conexion.cursor() as cursor:
                 cursor.execute(
                     """
                     INSERT INTO solicitudes_partner
@@ -44,6 +59,19 @@ class RepositorioSolicitudesPartnerPostgres(RepositorioSolicitudesPartner):
                         solicitud.estado.value,
                     ),
                 )
+
+                for evento in eventos:
+                    cursor.execute(
+                        """
+                        INSERT INTO outbox_eventos (solicitud_id, tipo_evento, payload)
+                        VALUES (%s, %s, %s)
+                        """,
+                        (
+                            evento.solicitud_id,
+                            type(evento).__name__,
+                            Jsonb(_evento_a_payload(evento)),
+                        ),
+                    )
         except psycopg.errors.UniqueViolation as error:
             raise SolicitudDuplicadaError(
                 "Ya existe una solicitud para el partner y referencia externa"

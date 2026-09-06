@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "Hogar de los Alpes - Solicitudes de Partner (Fase 5)",
+    "description": "Coleccion de pruebas manuales para la API REST de Solicitudes de Partner.\n\nVariables usadas:\n- base_url: host:puerto donde corre la API (por defecto http://127.0.0.1:8000)\n- solicitud_id / partner_id / referencia_externa / tipo_servicio: datos de ejemplo para registrar\n\nLevantar la API antes de correr esta coleccion:\n  uvicorn solicitudes_partner.api.app:app --port 8000\n(o con SOLICITUDES_PARTNER_BACKEND=memoria si no tienes PostgreSQL corriendo).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "solicitud_id", "value": "sol-postman-1", "type": "string" },
+    { "key": "partner_id", "value": "partner-postman-1", "type": "string" },
+    { "key": "referencia_externa", "value": "REF-POSTMAN-1", "type": "string" },
+    { "key": "tipo_servicio", "value": "electricidad", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Solicitudes Partner",
+      "item": [
+        {
+          "name": "Registrar solicitud (201 Created)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Responde solicitud_id y estado', function () {",
+                  "    const cuerpo = pm.response.json();",
+                  "    pm.expect(cuerpo.solicitud_id).to.eql(pm.collectionVariables.get('solicitud_id'));",
+                  "    pm.expect(['LISTA_PARA_ATENCION', 'RECHAZADA']).to.include(cuerpo.estado);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"solicitud_id\": \"{{solicitud_id}}\",\n  \"partner_id\": \"{{partner_id}}\",\n  \"referencia_externa\": \"{{referencia_externa}}\",\n  \"tipo_servicio\": \"{{tipo_servicio}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/solicitudes-partner",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes-partner"]
+            }
+          }
+        },
+        {
+          "name": "Consultar solicitud por id (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Vista completa correcta', function () {",
+                  "    const cuerpo = pm.response.json();",
+                  "    pm.expect(cuerpo.solicitud_id).to.eql(pm.collectionVariables.get('solicitud_id'));",
+                  "    pm.expect(cuerpo.partner_id).to.eql(pm.collectionVariables.get('partner_id'));",
+                  "    pm.expect(cuerpo.referencia_externa).to.eql(pm.collectionVariables.get('referencia_externa'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/solicitudes-partner/{{solicitud_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes-partner", "{{solicitud_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Listar solicitudes por partner (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Devuelve una lista con al menos un elemento', function () {",
+                  "    const cuerpo = pm.response.json();",
+                  "    pm.expect(cuerpo).to.be.an('array');",
+                  "    pm.expect(cuerpo.length).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/solicitudes-partner?partner_id={{partner_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes-partner"],
+              "query": [
+                { "key": "partner_id", "value": "{{partner_id}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Registrar solicitud duplicada (409 Conflict)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 409', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "pm.test('Responde con detalle de error', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('detalle');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"solicitud_id\": \"{{solicitud_id}}-duplicada\",\n  \"partner_id\": \"{{partner_id}}\",\n  \"referencia_externa\": \"{{referencia_externa}}\",\n  \"tipo_servicio\": \"{{tipo_servicio}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/solicitudes-partner",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes-partner"]
+            }
+          }
+        },
+        {
+          "name": "Consultar solicitud inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Responde con detalle de error', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('detalle');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/solicitudes-partner/no-existe",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes-partner", "no-existe"]
+            }
+          }
+        },
+        {
+          "name": "Registrar solicitud con campo invalido (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Responde con detalle de error', function () {",
+                  "    pm.expect(pm.response.json()).to.have.property('detalle');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"solicitud_id\": \"sol-invalida\",\n  \"partner_id\": \"   \",\n  \"referencia_externa\": \"REF-INVALIDA\",\n  \"tipo_servicio\": \"electricidad\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/solicitudes-partner",
+              "host": ["{{base_url}}"],
+              "path": ["solicitudes-partner"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Publicar pendientes del Outbox (200 OK, o 501 si backend=memoria)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code es 200 o 501', function () {",
+                  "    pm.expect([200, 501]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test('Responde cuantos eventos publico', function () {",
+                  "        pm.expect(pm.response.json()).to.have.property('publicados');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/outbox/publicar-pendientes",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "outbox", "publicar-pendientes"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
